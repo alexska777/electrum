@@ -105,16 +105,16 @@ class ChannelsList(MyTreeView):
 
     def update_status(self):
         channel_db = self.parent.network.channel_db
-        num_nodes = len(channel_db.nodes)
-        num_channels = len(channel_db)
+        num_nodes = channel_db.num_nodes()
+        num_channels = channel_db.num_channels()
         num_peers = len(self.parent.wallet.lnworker.peers)
         msg = _('{} peers, {} nodes, {} channels.').format(num_peers, num_nodes, num_channels)
         self.status.setText(msg)
 
     def statistics_dialog(self):
         channel_db = self.parent.network.channel_db
-        num_nodes = len(channel_db.nodes)
-        num_channels = len(channel_db)
+        num_nodes = channel_db.num_nodes()
+        num_channels = channel_db.num_channels()
         capacity = self.parent.format_amount(channel_db.capacity()) + ' '+ self.parent.base_unit()
         d = WindowModalDialog(self.parent, _('Lightning Network Statistics'))
         d.setMinimumWidth(400)

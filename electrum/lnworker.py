@@ -368,12 +368,12 @@ class LNWorker(PrintError):
         node_id, rest = extract_nodeid(connect_contents)
         peer = self.peers.get(node_id)
         if not peer:
-            all_nodes = self.network.channel_db.nodes
-            node_info = all_nodes.get(node_id, None)
+            nodes_get = self.network.channel_db.nodes_get
+            node_info = nodes_get(node_id)
             if rest is not None:
                 host, port = split_host_port(rest)
             elif node_info and len(node_info.addresses) > 0:
-                host, port = self.choose_preferred_address(node_info.addresses)
+                host, port = self.choose_preferred_address(list(node_info.addresses))
             else:
                 raise ConnStringFormatError(_('Unknown node:') + ' ' + bh2u(node_id))
             try:
@@ -620,20 +620,12 @@ class LNWorker(PrintError):
             if peer in self._last_tried_peer: continue
             return [peer]
         # try random peer from graph
-        all_nodes = self.channel_db.nodes
-        if all_nodes:
+        unconnected_nodes = self.channel_db.get_200_randomly_sorted_nodes_not_in(self.peers.keys())
+        if unconnected_nodes:
             #self.print_error('trying to get ln peers from channel db')
-            node_ids = list(all_nodes)
-            max_tries = min(200, len(all_nodes))
-            for i in range(max_tries):
-                node_id = random.choice(node_ids)
-                node = all_nodes.get(node_id)
-                if node is None: continue
-                addresses = node.addresses
-                if not addresses: continue
-                host, port = self.choose_preferred_address(addresses)
-                peer = LNPeerAddr(host, port, node_id)
-                if peer.pubkey in self.peers: continue
+            for node in unconnected_nodes:
+                host, port = self.choose_preferred_address(list(node.addresses))
+                peer = LNPeerAddr(host, port, bytes.fromhex(node.node_id))
                 if peer in self._last_tried_peer: continue
                 self.print_error('taking random ln peer from our channel db')
                 return [peer]
@@ -693,7 +685,7 @@ class LNWorker(PrintError):
                     await self.add_peer(peer.host, peer.port, peer.pubkey)
                     return
             # try random address for node_id
-            node_info = self.channel_db.nodes.get(chan.node_id, None)
+            node_info = self.channel_db.nodes_get(chan.node_id)
             if not node_info: return
             addresses = node_info.addresses
             if not addresses: return
